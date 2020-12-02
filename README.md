@@ -9,14 +9,14 @@
 > <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION"/>
 > ``` 
 
-### UI
+### 위도/경도 읽기 방법
 > GPS 위도/경도를 3가지 방법으로 읽어올 수 있다.  
 > 1. GPS Provider: 스마트폰에 내장된 GPS 모듈에서 측정  
 > 2. Network Provider: 이동통신 기지국 또는 WiFi access point들을 이용하여 측정  
 > 3. Passive Provider: 다른 어플리케이션이나 서비스가 좌표 값을 구하면 단순히 그 값을 받아 오기만 하는 전달자 역할  
 > 위의 3개에 대한 위도/경도를 textView 로 각각 표기하였다.  
->  
-> layout/activity_main.xml  
+
+### layout/activity_main.xml  
 > GPS Provider: tvGpsLatitude / tvGpsLongitude  
 > Network Provider: tvNetworkLatitude / tvNetworkLongitude  
 > Passive Provider: tvPassiveLatitude / tvPassiveLongitude  
