@@ -1,9 +1,5 @@
 package priv.jujin.locationtutorial;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.app.ActivityCompat;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -21,10 +17,18 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+
+import com.android.volley.Request;
+import com.android.volley.toolbox.Volley;
+
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+
+import priv.jujin.locationtutorial.domain.HttpReqBody;
 
 public class MainActivity extends AppCompatActivity implements LocationListener, SensorEventListener {
     private final String TAG = "LocationProvider";
@@ -42,8 +46,15 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private final float[] rotationMatrix = new float[9];
     private final float[] orientationAngles = new float[3];
 
+    private final int updateMinTimeMs = 10000;      /* 10 seconds interval for update location */
+    private final int updateMinDistanceMeter = 0;   /* 0 meter interval for update location */
+
     private Geocoder geocoder;
 
+    private HttpReqBody reqBody;
+    RequestData requestData;
+
+    @SuppressLint("CheckResult")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,6 +80,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         geocoder = new Geocoder(this, Locale.KOREA);
+
+        String url = "http://192.168.0.98:3000/trip/send";
+        requestData = RequestData.builder()
+                .queue(Volley.newRequestQueue(getApplicationContext()))
+                .requestType(Request.Method.POST)
+                .requestUrl(url)
+                .build();
     }
 
     @Override
@@ -117,16 +135,28 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             return;
         }
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
-        locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 0, 0, this);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, updateMinTimeMs, updateMinDistanceMeter, this);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, updateMinTimeMs, updateMinDistanceMeter, this);
+        locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, updateMinTimeMs, updateMinDistanceMeter, this);
     }
 
-    @SuppressLint("SetTextI18n")
+    @SuppressLint({"SetTextI18n", "CheckResult"})
     @Override
     public void onSensorChanged(SensorEvent event) {
         float azimuth = getAzimuthFromSensor(event);
         tvAzimuth.setText("azimuth: " + azimuth);
+        if (reqBody != null) {
+            reqBody.setAzimuth((double) azimuth);
+            Log.d(TAG, "reqBody: " + reqBody.getJson().toString());
+
+            requestData.setRequestParams(reqBody.getJson());
+            NetworkHelper.apiCall(requestData,
+                    response -> Log.d(TAG, "response: " + response),
+                    error -> Log.e(TAG, "error: " + error)
+            );
+
+            reqBody = null;
+        }
     }
 
     /* It's referenced from
@@ -203,12 +233,15 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             tvPassiveLongitude.setText(String.valueOf(longitude));
             Log.d(TAG, "Passive : " + latitude + '/' + longitude);
         }
-
+        /* 참조사이트: https://copycoding.tistory.com/38 */
         double speed = location.getSpeed();
         tvSpeed.setText("speed: " + speed);
 
         String address = getAddress(latitude, longitude);
         Log.d(TAG, "Address: " + address);
         tvAddress.setText(address);
+
+        reqBody = new HttpReqBody(latitude, longitude,
+                null, null, null, null, speed);
     }
 }
