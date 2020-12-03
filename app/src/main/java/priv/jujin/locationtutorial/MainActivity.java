@@ -31,7 +31,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private TextView tvGpsLatitude, tvGpsLongitude;
     private TextView tvPassiveLatitude, tvPassiveLongitude;
     private TextView tvNetworkLatitude, tvNetworkLongitude;
-    private TextView tvAzimuth, tvAddress;
+    private TextView tvAzimuth, tvAddress, tvSpeed;
 
     private LocationManager locationManager;
     private SensorManager sensorManager;
@@ -57,6 +57,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         tvPassiveLongitude = findViewById(R.id.tvPassiveLongitude);
         tvAzimuth = findViewById(R.id.tvAzimuth);
         tvAddress = findViewById(R.id.tvAddress);
+        tvSpeed = findViewById(R.id.tvSpeed);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensorAccel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -121,10 +122,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 0, 0, this);
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onSensorChanged(SensorEvent event) {
         float azimuth = getAzimuthFromSensor(event);
-        tvAzimuth.setText(String.valueOf(azimuth));
+        tvAzimuth.setText("azimuth: " + azimuth);
     }
 
     /* It's referenced from
@@ -172,6 +174,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
     }
 
+    @SuppressLint("SetTextI18n")
     @Override
     public void onLocationChanged(@NonNull Location location) {
         double latitude = 0.0;
@@ -200,6 +203,9 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             tvPassiveLongitude.setText(String.valueOf(longitude));
             Log.d(TAG, "Passive : " + latitude + '/' + longitude);
         }
+
+        double speed = location.getSpeed();
+        tvSpeed.setText("speed: " + speed);
 
         String address = getAddress(latitude, longitude);
         Log.d(TAG, "Address: " + address);

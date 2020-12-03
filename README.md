@@ -19,7 +19,8 @@
 ### layout/activity_main.xml  
 > GPS Provider: tvGpsLatitude / tvGpsLongitude  
 > Network Provider: tvNetworkLatitude / tvNetworkLongitude  
-> Passive Provider: tvPassiveLatitude / tvPassiveLongitude  
+> Passive Provider: tvPassiveLatitude / tvPassiveLongitude    
+> 속도: tvSpeed
 
 ### MainActivity
 > 인터페이스 LocationListener 를 구현 및 다음 변수들을 선언한다.
@@ -125,6 +126,8 @@
 >         tvPassiveLongitude.setText(String.valueOf(longitude));
 >         Log.d(TAG, " Passive : " + latitude + '/' + longitude);
 >     }
+>     double speed = location.getSpeed();
+>     tvSpeed.setText("speed: " + speed);
 > }
 > ```
 
@@ -257,3 +260,11 @@
 > }
 > ```
 
+## HTTP Client
+### AndroidManifest
+> AndroidManifest.xml 에서 인터넷 사용을 위해 다음의 권한을 추가한다.
+> ```xml
+> <uses-permission android:name="android.permission.INTERNET" />
+> ```
+
+### 
