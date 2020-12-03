@@ -12,6 +12,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -19,15 +21,17 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity implements LocationListener, SensorEventListener {
     private final String TAG = "LocationProvider";
     private TextView tvGpsLatitude, tvGpsLongitude;
     private TextView tvPassiveLatitude, tvPassiveLongitude;
     private TextView tvNetworkLatitude, tvNetworkLongitude;
-    private TextView tvAzimuth;
+    private TextView tvAzimuth, tvAddress;
 
     private LocationManager locationManager;
     private SensorManager sensorManager;
@@ -35,9 +39,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
     private final float[] accelerometerReading = new float[3];
     private final float[] magnetometerReading = new float[3];
-
     private final float[] rotationMatrix = new float[9];
     private final float[] orientationAngles = new float[3];
+
+    private Geocoder geocoder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -51,6 +56,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         tvPassiveLatitude = findViewById(R.id.tvPassiveLatitude);
         tvPassiveLongitude = findViewById(R.id.tvPassiveLongitude);
         tvAzimuth = findViewById(R.id.tvAzimuth);
+        tvAddress = findViewById(R.id.tvAddress);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensorAccel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -60,6 +66,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         sensorManager.registerListener(this, sensorMag, SensorManager.SENSOR_DELAY_NORMAL);
 
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+
+        geocoder = new Geocoder(this, Locale.KOREA);
     }
 
     @Override
@@ -140,6 +148,25 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         return orientationAngles[0] * 57.2957795f + 180.0f; /* to make azimuth range 0 ~ 360 */
     }
 
+    private String getAddress(double lat, double lng) {
+        List<Address> addressList;
+        String address = null;
+
+        try {
+            if (geocoder != null) {
+                addressList = geocoder.getFromLocation(lat, lng, 1);
+
+                if (addressList != null && addressList.size() > 0) {
+                    address = addressList.get(0).getAddressLine(0);
+                }
+            }
+        } catch (IOException e) {
+            Log.e(TAG, e.getMessage());
+        }
+
+        return address;
+    }
+
     @Override
     public void onAccuracyChanged(Sensor sensor, int i) {
 
@@ -147,15 +174,15 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
     @Override
     public void onLocationChanged(@NonNull Location location) {
-        double latitude;
-        double longitude;
+        double latitude = 0.0;
+        double longitude = 0.0;
 
         if (location.getProvider().equals(LocationManager.GPS_PROVIDER)) {
             latitude = location.getLatitude();
             longitude = location.getLongitude();
             tvGpsLatitude.setText(String.valueOf(latitude));
             tvGpsLongitude.setText(String.valueOf(longitude));
-            Log.d(TAG, " GPS : " + latitude + '/' + longitude);
+            Log.d(TAG, "GPS : " + latitude + '/' + longitude);
         }
 
         if (location.getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
@@ -163,7 +190,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             longitude = location.getLongitude();
             tvNetworkLatitude.setText(String.valueOf(latitude));
             tvNetworkLongitude.setText(String.valueOf(longitude));
-            Log.d(TAG, " Network : " + latitude + '/' + longitude);
+            Log.d(TAG, "Network : " + latitude + '/' + longitude);
         }
 
         if (location.getProvider().equals(LocationManager.PASSIVE_PROVIDER)) {
@@ -171,7 +198,11 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             longitude = location.getLongitude();
             tvPassiveLatitude.setText(String.valueOf(latitude));
             tvPassiveLongitude.setText(String.valueOf(longitude));
-            Log.d(TAG, " Passive : " + latitude + '/' + longitude);
+            Log.d(TAG, "Passive : " + latitude + '/' + longitude);
         }
+
+        String address = getAddress(latitude, longitude);
+        Log.d(TAG, "Address: " + address);
+        tvAddress.setText(address);
     }
 }

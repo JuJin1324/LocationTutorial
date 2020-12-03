@@ -203,3 +203,57 @@
 > }
 > ``` 
 
+## 리버스 지오코딩
+### UI
+> 위경도로 부터 변환된 주소를 표시할 TextView 를 하나 추가한다. 이름은 tvAddress
+
+### MainActivity
+> 멤버 변수로 Geocoder 를 추가한다.
+> ```java
+> public class MainActivity extends AppCompatActivity implements LocationListener, SensorEventListener {
+>     private Geocoder geocoder;
+>     ...
+> }
+> ```
+>
+> onCreate 에서 변수를 초기화 한다.
+> ```java
+> @Override
+> protected void onCreate(Bundle savedInstanceState) {
+>     ...
+>     geocoder = new Geocoder(this, Locale.KOREA); 
+> ```
+> 
+> 위경도로 부터 주소를 반환 받을 메서드 getAddress 를 추가한다.
+> ```java
+> private String getAddress(double lat, double lng) {
+>     List<Address> addressList;
+>     String address = null;
+> 
+>     try {
+>         if (geocoder != null) {
+>             addressList = geocoder.getFromLocation(lat, lng, 1);
+> 
+>             if (addressList != null && addressList.size() > 0) {
+>                 address = addressList.get(0).getAddressLine(0);
+>             }
+>         }
+>     } catch (IOException e) {
+>         Log.e(TAG, e.getMessage());
+>     }
+> 
+>     return address;
+> }
+> ```
+> 
+> 위치가 변화하면 자동으로 호출되는 onLocationChanged 메서드에 위에서 정의한 메서드를 호출하여 TextView 에 표시하도록 한다.
+> ```java
+> @Override
+> public void onLocationChanged(@NonNull Location location) {
+>     ...
+>     String address = getAddress(latitude, longitude);
+>     Log.d(TAG, "Address: " + address);
+>     tvAddress.setText(address);
+> }
+> ```
+
