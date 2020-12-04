@@ -520,3 +520,4 @@
 >         reqBody.setAzimuth((double) azimuth);
 > }
 > ```
+> 출처: [안드로이드/Android Handler 와 Timer(TimerTask) 를 활용한 Intro 화면 구성](https://arabiannight.tistory.com/67)

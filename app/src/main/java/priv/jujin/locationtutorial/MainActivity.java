@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         tvSpeed = findViewById(R.id.tvSpeed);
         btnStartSend = findViewById(R.id.btnStartSend);
         btnStopSend = findViewById(R.id.btnStopSend);
+        btnStopSend.setEnabled(false);
         etSendInterval = findViewById(R.id.etSendInterval);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -92,53 +94,13 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
         geocoder = new Geocoder(this, Locale.KOREA);
 
+        /* For Http Request */
         String url = "http://192.168.0.98:3000/trip/send";
         requestData = RequestData.builder()
                 .queue(Volley.newRequestQueue(getApplicationContext()))
                 .requestType(Request.Method.POST)
                 .requestUrl(url)
                 .build();
-
-        btnStartSend.setOnClickListener(view -> {
-            btnStartSend.setEnabled(false);
-            btnStopSend.setEnabled(true);
-            etSendInterval.setEnabled(false);
-
-            registerSensorListeners();
-            requestLocationUpdates(100, 0);
-            /* 참조사이트: https://arabiannight.tistory.com/67 */
-            TimerTask tt = new TimerTask() {
-                @Override
-                public void run() {
-                    if (reqBody != null) {
-                        requestData.setRequestParams(reqBody.getJson());
-                        NetworkHelper.apiCall(requestData,
-                                response -> {
-                                    Date dt = new Date();
-                                    SimpleDateFormat full_sdf = new SimpleDateFormat("yyyy-MM-dd, hh:mm:ss a");
-                                    Log.d(TAG, "[" + full_sdf.format(dt) + "]" + "response: " + response);
-                                },
-                                error -> Log.e(TAG, "error: " + error)
-                        );
-
-                        reqBody = null;
-                    }
-                }
-            };
-            timer = new Timer();
-            timer.schedule(tt, 0, sendIntervalSec * 1000);
-            Log.d(TAG, "sendIntervalSec: " + sendIntervalSec);
-        });
-        btnStopSend.setEnabled(false);
-        btnStopSend.setOnClickListener(view -> {
-            btnStartSend.setEnabled(true);
-            btnStopSend.setEnabled(false);
-            etSendInterval.setEnabled(true);
-
-            sensorManager.unregisterListener(this);
-            locationManager.removeUpdates(this);
-            timer.cancel();
-        });
 
         sendIntervalSec = Integer.parseInt(etSendInterval.getText().toString());
         etSendInterval.addTextChangedListener(new TextWatcher() {
@@ -159,6 +121,47 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 }
             }
         });
+    }
+
+    public void onBtnStartSendClick(View view) {
+        btnStartSend.setEnabled(false);
+        btnStopSend.setEnabled(true);
+        etSendInterval.setEnabled(false);
+
+        registerSensorListeners();
+        requestLocationUpdates(100, 0);
+        /* 참조사이트: https://arabiannight.tistory.com/67 */
+        TimerTask tt = new TimerTask() {
+            @Override
+            public void run() {
+                if (reqBody != null) {
+                    requestData.setRequestParams(reqBody.getJson());
+                    NetworkHelper.apiCall(requestData,
+                            response -> {
+                                Date dt = new Date();
+                                SimpleDateFormat full_sdf = new SimpleDateFormat("yyyy-MM-dd, hh:mm:ss a");
+                                Log.d(TAG, "[" + full_sdf.format(dt) + "]" + "response: " + response);
+                            },
+                            error -> Log.e(TAG, "error: " + error)
+                    );
+
+                    reqBody = null;
+                }
+            }
+        };
+        timer = new Timer();
+        timer.schedule(tt, 0, sendIntervalSec * 1000);
+        Log.d(TAG, "sendIntervalSec: " + sendIntervalSec);
+    }
+
+    public void onBtnStopSendClick(View view) {
+        btnStartSend.setEnabled(true);
+        btnStopSend.setEnabled(false);
+        etSendInterval.setEnabled(true);
+
+        sensorManager.unregisterListener(this);
+        locationManager.removeUpdates(this);
+        timer.cancel();
     }
 
     @Override
@@ -298,4 +301,5 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         reqBody = new HttpReqBody(latitude, longitude,
                 null, null, null, null, speed);
     }
+
 }
