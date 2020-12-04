@@ -234,8 +234,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 accelerometerReading, magnetometerReading);
         SensorManager.getOrientation(rotationMatrix, orientationAngles);
 
-//        return orientationAngles[0] * 57.2957795f;      /* default azimuth range is -180 to 180 */
-        return orientationAngles[0] * 57.2957795f + 180.0f; /* to make azimuth range 0 ~ 360 */
+        float azimuth = orientationAngles[0] * 57.2957795f;     /* default azimuth range is -180 to 180 */
+        if (azimuth < 0)
+            azimuth += 360.0;   /* to make azimuth range 0 ~ 360 */
+        return azimuth;
     }
 
     private String getAddress(double lat, double lng) {
