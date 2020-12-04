@@ -44,7 +44,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private TextView tvPassiveLatitude, tvPassiveLongitude;
     private TextView tvNetworkLatitude, tvNetworkLongitude;
     private TextView tvAzimuth, tvAddress, tvSpeed;
-    private Button btnStartSend, btnEndSend;
+    private Button btnStartSend, btnStopSend;
     private EditText etSendInterval;
 
     private LocationManager locationManager;
@@ -81,7 +81,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         tvAddress = findViewById(R.id.tvAddress);
         tvSpeed = findViewById(R.id.tvSpeed);
         btnStartSend = findViewById(R.id.btnStartSend);
-        btnEndSend = findViewById(R.id.btnEndSend);
+        btnStopSend = findViewById(R.id.btnStopSend);
         etSendInterval = findViewById(R.id.etSendInterval);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
@@ -92,8 +92,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
         geocoder = new Geocoder(this, Locale.KOREA);
 
-//        String url = "http://192.168.0.98:3000/trip/send";
-        String url = "http://36.39.61.104:3000/trip/send";
+        String url = "http://192.168.0.98:3000/trip/send";
         requestData = RequestData.builder()
                 .queue(Volley.newRequestQueue(getApplicationContext()))
                 .requestType(Request.Method.POST)
@@ -102,7 +101,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
         btnStartSend.setOnClickListener(view -> {
             btnStartSend.setEnabled(false);
-            btnEndSend.setEnabled(true);
+            btnStopSend.setEnabled(true);
             etSendInterval.setEnabled(false);
 
             registerSensorListeners();
@@ -130,10 +129,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             timer.schedule(tt, 0, sendIntervalSec * 1000);
             Log.d(TAG, "sendIntervalSec: " + sendIntervalSec);
         });
-        btnEndSend.setEnabled(false);
-        btnEndSend.setOnClickListener(view -> {
+        btnStopSend.setEnabled(false);
+        btnStopSend.setOnClickListener(view -> {
             btnStartSend.setEnabled(true);
-            btnEndSend.setEnabled(false);
+            btnStopSend.setEnabled(false);
             etSendInterval.setEnabled(true);
 
             sensorManager.unregisterListener(this);
@@ -175,29 +174,20 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     @Override
     protected void onPause() {
         super.onPause();
-
-//        sensorManager.unregisterListener(this);
-//        locationManager.removeUpdates(this);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
-
-//        sensorManager.unregisterListener(this);
-//        locationManager.removeUpdates(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-
-//        requestLocationUpdates(0, 0);
     }
 
     @Override
     public void onProviderEnabled(@NonNull String provider) {
-//        requestLocationUpdates(0, 0);
     }
 
     @SuppressLint({"SetTextI18n", "CheckResult"})
@@ -300,6 +290,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
         /* 참조사이트: https://copycoding.tistory.com/38 */
         double speed = location.getSpeed();
+        tvSpeed.setText(String.valueOf(speed));
 
         String address = getAddress(latitude, longitude);
         tvAddress.setText(address);

@@ -438,3 +438,85 @@
 >}
 > ```
 > 출처: [[Android] Volley를 써보자!!](https://layers7.tistory.com/25)
+
+## 버튼을 통한 주기(Interval) 전송
+### UI
+> 전송 주기 설정할 EditText 추가: etSendInterval   
+> 전송 시작 버튼 및 중지 버튼 추가: btnStartSend, btnStopSend
+
+### MainActivity
+> 멤버 변수에 전송 주기(초) 변수 sendIntervalSec 추가 및 주기 전송을 위한 Timer 변수 추가
+> ```java
+> private final int DEFAULT_SEND_INTERVAL_SEC = 60;
+> private int sendIntervalSec = DEFAULT_SEND_INTERVAL_SEC;
+> Timer timer;
+> ```
+>
+> 시작 버튼 클릭시 위치 정보 수집 및 전송과 중지 버튼 클릭시 위치 정보 수집 및 전송 모두 중지로 구현할 것이기 때문에 
+> 기존 onPause, onDestroy, onResume, onProviderEnabled 매서드에 정의해두었던 location 및 sensor 관련 메서드 호출 모두 제거
+> location 관련 메서드 하나로 모은 메서드 정의
+> ```java
+> private void requestLocationUpdates(int updateIntervalMillisec, int updateMinDistanceMeter) {
+>     if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+>         return;
+>     }
+> 
+>     locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, updateIntervalMillisec, updateMinDistanceMeter, this);
+>     locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, updateIntervalMillisec, updateMinDistanceMeter, this);
+>     locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, updateIntervalMillisec, updateMinDistanceMeter, this);
+> }
+> ```
+> 
+> sensor 관련 메서드 하나로 모은 메서드 정의
+> ```java
+> private void registerSensorListeners() {
+>     sensorManager.registerListener(this, sensorAccel, SensorManager.SENSOR_DELAY_NORMAL);
+>     sensorManager.registerListener(this, sensorMag, SensorManager.SENSOR_DELAY_NORMAL);
+> }
+> ```
+> 
+> onCreate 에 btnStartSend 에 대한 onClickListener 추가   
+> TimerTask + Timer 객체를 통해서 주기 전송 구현
+> ```java
+> protected void onCreate(Bundle savedInstanceState) {
+>     ...
+>     btnStartSend.setOnClickListener(view -> {
+>         btnStartSend.setEnabled(false);
+>         btnStopSend.setEnabled(true);
+>         etSendInterval.setEnabled(false);
+>     
+>         registerSensorListeners();
+>         requestLocationUpdates(100, 0);
+>         TimerTask tt = new TimerTask() {
+>             @Override
+>             public void run() {
+>                 if (reqBody != null) {
+>                     requestData.setRequestParams(reqBody.getJson());
+>                     NetworkHelper.apiCall(requestData,
+>                             response -> {
+>                                 Date dt = new Date();
+>                                 SimpleDateFormat full_sdf = new SimpleDateFormat("yyyy-MM-dd, hh:mm:ss a");
+>                                 Log.d(TAG, "[" + full_sdf.format(dt) + "]" + "response: " + response);
+>                             },
+>                             error -> Log.e(TAG, "error: " + error)
+>                     );
+>     
+>                     reqBody = null;
+>                 }
+>             }
+>         };
+>         timer = new Timer();
+>         timer.schedule(tt, 0, sendIntervalSec * 1000);
+> });
+> }
+> ```
+> 
+> 기존 onSensorChanged 에서 구현했던 전송 기능을 위의 TimeTask 에서 구현하는 것으로 옮겼기 때문에 onSensorChanged 메서드 수정
+> ```java
+> public void onSensorChanged(SensorEvent event) {
+>     float azimuth = getAzimuthFromSensor(event);
+>     tvAzimuth.setText("azimuth: " + azimuth);
+>     if (reqBody != null)
+>         reqBody.setAzimuth((double) azimuth);
+> }
+> ```
