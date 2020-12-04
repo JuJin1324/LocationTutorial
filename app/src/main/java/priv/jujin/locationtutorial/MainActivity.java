@@ -14,7 +14,11 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.util.Log;
+import android.widget.Button;
+import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -25,8 +29,12 @@ import com.android.volley.Request;
 import com.android.volley.toolbox.Volley;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.List;
 import java.util.Locale;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import priv.jujin.locationtutorial.domain.HttpReqBody;
 
@@ -36,6 +44,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private TextView tvPassiveLatitude, tvPassiveLongitude;
     private TextView tvNetworkLatitude, tvNetworkLongitude;
     private TextView tvAzimuth, tvAddress, tvSpeed;
+    private Button btnStartSend, btnEndSend;
+    private EditText etSendInterval;
 
     private LocationManager locationManager;
     private SensorManager sensorManager;
@@ -46,15 +56,16 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private final float[] rotationMatrix = new float[9];
     private final float[] orientationAngles = new float[3];
 
-    private final int updateMinTimeMs = 10000;      /* 10 seconds interval for update location */
-    private final int updateMinDistanceMeter = 0;   /* 0 meter interval for update location */
-
     private Geocoder geocoder;
 
     private HttpReqBody reqBody;
     RequestData requestData;
 
-    @SuppressLint("CheckResult")
+    private final int DEFAULT_SEND_INTERVAL_SEC = 60;
+    private int sendIntervalSec = DEFAULT_SEND_INTERVAL_SEC;
+    Timer timer;
+
+    @SuppressLint({"CheckResult", "SetTextI18n"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -69,24 +80,86 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         tvAzimuth = findViewById(R.id.tvAzimuth);
         tvAddress = findViewById(R.id.tvAddress);
         tvSpeed = findViewById(R.id.tvSpeed);
+        btnStartSend = findViewById(R.id.btnStartSend);
+        btnEndSend = findViewById(R.id.btnEndSend);
+        etSendInterval = findViewById(R.id.etSendInterval);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensorAccel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
         sensorMag = sensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD);
 
-        sensorManager.registerListener(this, sensorAccel, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, sensorMag, SensorManager.SENSOR_DELAY_NORMAL);
-
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
         geocoder = new Geocoder(this, Locale.KOREA);
 
-        String url = "http://192.168.0.98:3000/trip/send";
+//        String url = "http://192.168.0.98:3000/trip/send";
+        String url = "http://36.39.61.104:3000/trip/send";
         requestData = RequestData.builder()
                 .queue(Volley.newRequestQueue(getApplicationContext()))
                 .requestType(Request.Method.POST)
                 .requestUrl(url)
                 .build();
+
+        btnStartSend.setOnClickListener(view -> {
+            btnStartSend.setEnabled(false);
+            btnEndSend.setEnabled(true);
+            etSendInterval.setEnabled(false);
+
+            registerSensorListeners();
+            requestLocationUpdates(100, 0);
+            /* 참조사이트: https://arabiannight.tistory.com/67 */
+            TimerTask tt = new TimerTask() {
+                @Override
+                public void run() {
+                    if (reqBody != null) {
+                        requestData.setRequestParams(reqBody.getJson());
+                        NetworkHelper.apiCall(requestData,
+                                response -> {
+                                    Date dt = new Date();
+                                    SimpleDateFormat full_sdf = new SimpleDateFormat("yyyy-MM-dd, hh:mm:ss a");
+                                    Log.d(TAG, "[" + full_sdf.format(dt) + "]" + "response: " + response);
+                                },
+                                error -> Log.e(TAG, "error: " + error)
+                        );
+
+                        reqBody = null;
+                    }
+                }
+            };
+            timer = new Timer();
+            timer.schedule(tt, 0, sendIntervalSec * 1000);
+            Log.d(TAG, "sendIntervalSec: " + sendIntervalSec);
+        });
+        btnEndSend.setEnabled(false);
+        btnEndSend.setOnClickListener(view -> {
+            btnStartSend.setEnabled(true);
+            btnEndSend.setEnabled(false);
+            etSendInterval.setEnabled(true);
+
+            sensorManager.unregisterListener(this);
+            locationManager.removeUpdates(this);
+            timer.cancel();
+        });
+
+        sendIntervalSec = Integer.parseInt(etSendInterval.getText().toString());
+        etSendInterval.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+                try {
+                    sendIntervalSec = Integer.parseInt(s.toString());
+                } catch (NumberFormatException e) {
+                    sendIntervalSec = DEFAULT_SEND_INTERVAL_SEC;
+                }
+            }
+        });
     }
 
     @Override
@@ -103,41 +176,28 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     protected void onPause() {
         super.onPause();
 
-        sensorManager.unregisterListener(this);
-        locationManager.removeUpdates(this);
+//        sensorManager.unregisterListener(this);
+//        locationManager.removeUpdates(this);
     }
 
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        sensorManager.unregisterListener(this);
-        locationManager.removeUpdates(this);
+//        sensorManager.unregisterListener(this);
+//        locationManager.removeUpdates(this);
     }
 
     @Override
     protected void onResume() {
         super.onResume();
 
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        sensorManager.registerListener(this, sensorAccel, SensorManager.SENSOR_DELAY_NORMAL);
-        sensorManager.registerListener(this, sensorMag, SensorManager.SENSOR_DELAY_NORMAL);
-
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, this);
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, this);
-        locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, 0, 0, this);
+//        requestLocationUpdates(0, 0);
     }
 
     @Override
     public void onProviderEnabled(@NonNull String provider) {
-        if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            return;
-        }
-        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, updateMinTimeMs, updateMinDistanceMeter, this);
-        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, updateMinTimeMs, updateMinDistanceMeter, this);
-        locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, updateMinTimeMs, updateMinDistanceMeter, this);
+//        requestLocationUpdates(0, 0);
     }
 
     @SuppressLint({"SetTextI18n", "CheckResult"})
@@ -145,18 +205,23 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     public void onSensorChanged(SensorEvent event) {
         float azimuth = getAzimuthFromSensor(event);
         tvAzimuth.setText("azimuth: " + azimuth);
-        if (reqBody != null) {
+        if (reqBody != null)
             reqBody.setAzimuth((double) azimuth);
-            Log.d(TAG, "reqBody: " + reqBody.getJson().toString());
+    }
 
-            requestData.setRequestParams(reqBody.getJson());
-            NetworkHelper.apiCall(requestData,
-                    response -> Log.d(TAG, "response: " + response),
-                    error -> Log.e(TAG, "error: " + error)
-            );
-
-            reqBody = null;
+    private void requestLocationUpdates(int updateIntervalMillisec, int updateMinDistanceMeter) {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            return;
         }
+
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, updateIntervalMillisec, updateMinDistanceMeter, this);
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, updateIntervalMillisec, updateMinDistanceMeter, this);
+        locationManager.requestLocationUpdates(LocationManager.PASSIVE_PROVIDER, updateIntervalMillisec, updateMinDistanceMeter, this);
+    }
+
+    private void registerSensorListeners() {
+        sensorManager.registerListener(this, sensorAccel, SensorManager.SENSOR_DELAY_NORMAL);
+        sensorManager.registerListener(this, sensorMag, SensorManager.SENSOR_DELAY_NORMAL);
     }
 
     /* It's referenced from
@@ -235,10 +300,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         }
         /* 참조사이트: https://copycoding.tistory.com/38 */
         double speed = location.getSpeed();
-        tvSpeed.setText("speed: " + speed);
 
         String address = getAddress(latitude, longitude);
-        Log.d(TAG, "Address: " + address);
         tvAddress.setText(address);
 
         reqBody = new HttpReqBody(latitude, longitude,
