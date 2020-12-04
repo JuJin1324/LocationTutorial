@@ -1,4 +1,4 @@
-package priv.jujin.locationtutorial;
+package priv.jujin.locationtutorial.http;
 
 import com.android.volley.RequestQueue;
 

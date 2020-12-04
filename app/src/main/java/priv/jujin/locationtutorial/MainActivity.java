@@ -14,8 +14,6 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -37,7 +35,10 @@ import java.util.Locale;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import priv.jujin.locationtutorial.domain.HttpReqBody;
+import priv.jujin.locationtutorial.http.HttpReqBody;
+import priv.jujin.locationtutorial.http.NetworkHelper;
+import priv.jujin.locationtutorial.http.RequestData;
+import priv.jujin.locationtutorial.ui.listener.AfterTextChangedWatcher;
 
 public class MainActivity extends AppCompatActivity implements LocationListener, SensorEventListener {
     private final String TAG = "LocationProvider";
@@ -106,15 +107,15 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 .build();
 
         sendIntervalSec = Integer.parseInt(etSendInterval.getText().toString());
-        etSendInterval.addTextChangedListener(new AfterTextChangedWatcher(s -> {
+        etSendInterval.addTextChangedListener(new AfterTextChangedWatcher(editText -> {
             try {
-                sendIntervalSec = Integer.parseInt(s.toString());
+                sendIntervalSec = Integer.parseInt(editText.toString());
             } catch (NumberFormatException e) {
                 sendIntervalSec = DEFAULT_SEND_INTERVAL_SEC;
             }
         }));
         etSendAddress.addTextChangedListener(new AfterTextChangedWatcher(
-                s -> requestData.setRequestUrl("http://" + s.toString() + ":3000/trip/send")
+                editText -> requestData.setRequestUrl("http://" + editText.toString() + ":3000/trip/send")
         ));
     }
 
@@ -193,6 +194,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     public void onProviderEnabled(@NonNull String provider) {
     }
 
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int i) {
+    }
+
     @SuppressLint({"SetTextI18n", "CheckResult"})
     @Override
     public void onSensorChanged(SensorEvent event) {
@@ -200,6 +205,47 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         tvAzimuth.setText("azimuth: " + azimuth);
         if (reqBody != null)
             reqBody.setAzimuth((double) azimuth);
+    }
+
+    @SuppressLint("SetTextI18n")
+    @Override
+    public void onLocationChanged(@NonNull Location location) {
+        double latitude = 0.0;
+        double longitude = 0.0;
+
+        if (location.getProvider().equals(LocationManager.GPS_PROVIDER)) {
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+            tvGpsLatitude.setText(String.valueOf(latitude));
+            tvGpsLongitude.setText(String.valueOf(longitude));
+            Log.d(TAG, "GPS : " + latitude + '/' + longitude);
+        }
+
+        if (location.getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+            tvNetworkLatitude.setText(String.valueOf(latitude));
+            tvNetworkLongitude.setText(String.valueOf(longitude));
+            Log.d(TAG, "Network : " + latitude + '/' + longitude);
+        }
+
+        if (location.getProvider().equals(LocationManager.PASSIVE_PROVIDER)) {
+            latitude = location.getLatitude();
+            longitude = location.getLongitude();
+            tvPassiveLatitude.setText(String.valueOf(latitude));
+            tvPassiveLongitude.setText(String.valueOf(longitude));
+            Log.d(TAG, "Passive : " + latitude + '/' + longitude);
+        }
+        /* 참조사이트: https://copycoding.tistory.com/38 */
+        double speed = location.getSpeed();
+        tvSpeed.setText(String.valueOf(speed));
+
+        String address = getAddress(latitude, longitude);
+        if (address != null)
+            tvAddress.setText(address);
+
+        reqBody = new HttpReqBody(latitude, longitude,
+                null, null, null, null, speed);
     }
 
     private void requestLocationUpdates(int updateIntervalMillisec, int updateMinDistanceMeter) {
@@ -258,51 +304,4 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
 
         return address;
     }
-
-    @Override
-    public void onAccuracyChanged(Sensor sensor, int i) {
-
-    }
-
-    @SuppressLint("SetTextI18n")
-    @Override
-    public void onLocationChanged(@NonNull Location location) {
-        double latitude = 0.0;
-        double longitude = 0.0;
-
-        if (location.getProvider().equals(LocationManager.GPS_PROVIDER)) {
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
-            tvGpsLatitude.setText(String.valueOf(latitude));
-            tvGpsLongitude.setText(String.valueOf(longitude));
-            Log.d(TAG, "GPS : " + latitude + '/' + longitude);
-        }
-
-        if (location.getProvider().equals(LocationManager.NETWORK_PROVIDER)) {
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
-            tvNetworkLatitude.setText(String.valueOf(latitude));
-            tvNetworkLongitude.setText(String.valueOf(longitude));
-            Log.d(TAG, "Network : " + latitude + '/' + longitude);
-        }
-
-        if (location.getProvider().equals(LocationManager.PASSIVE_PROVIDER)) {
-            latitude = location.getLatitude();
-            longitude = location.getLongitude();
-            tvPassiveLatitude.setText(String.valueOf(latitude));
-            tvPassiveLongitude.setText(String.valueOf(longitude));
-            Log.d(TAG, "Passive : " + latitude + '/' + longitude);
-        }
-        /* 참조사이트: https://copycoding.tistory.com/38 */
-        double speed = location.getSpeed();
-        tvSpeed.setText(String.valueOf(speed));
-
-        String address = getAddress(latitude, longitude);
-        if (address != null)
-            tvAddress.setText(address);
-
-        reqBody = new HttpReqBody(latitude, longitude,
-                null, null, null, null, speed);
-    }
-
 }

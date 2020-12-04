@@ -1,4 +1,4 @@
-package priv.jujin.locationtutorial;
+package priv.jujin.locationtutorial.ui.listener;
 
 import android.text.Editable;
 import android.text.TextWatcher;
@@ -25,7 +25,7 @@ public class AfterTextChangedWatcher implements TextWatcher {
         this.afterTextChangedCallback.callback(s);
     }
 
-    interface AfterTextChangedCallback {
+    public interface AfterTextChangedCallback {
         void callback(Editable s);
     }
 }

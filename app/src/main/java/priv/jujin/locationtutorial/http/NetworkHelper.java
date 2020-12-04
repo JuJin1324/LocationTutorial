@@ -1,4 +1,4 @@
-package priv.jujin.locationtutorial;
+package priv.jujin.locationtutorial.http;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
@@ -19,11 +19,11 @@ public class NetworkHelper {
         queue.add(request);
     }
 
-    interface OnSuccessListener {
+    public interface OnSuccessListener {
         void onSuccess(JSONObject response);
     }
 
-    interface OnFailListener {
+    public interface OnFailListener {
         void onFail(Throwable error);
     }
     /**

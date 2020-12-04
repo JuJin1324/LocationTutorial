@@ -1,4 +1,4 @@
-package priv.jujin.locationtutorial.domain;
+package priv.jujin.locationtutorial.http;
 
 import org.json.JSONException;
 import org.json.JSONObject;
