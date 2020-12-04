@@ -41,12 +41,13 @@ import priv.jujin.locationtutorial.domain.HttpReqBody;
 
 public class MainActivity extends AppCompatActivity implements LocationListener, SensorEventListener {
     private final String TAG = "LocationProvider";
+
     private TextView tvGpsLatitude, tvGpsLongitude;
     private TextView tvPassiveLatitude, tvPassiveLongitude;
     private TextView tvNetworkLatitude, tvNetworkLongitude;
     private TextView tvAzimuth, tvAddress, tvSpeed;
     private Button btnStartSend, btnStopSend;
-    private EditText etSendInterval;
+    private EditText etSendInterval, etSendAddress;
 
     private LocationManager locationManager;
     private SensorManager sensorManager;
@@ -65,6 +66,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
     private final int DEFAULT_SEND_INTERVAL_SEC = 60;
     private int sendIntervalSec = DEFAULT_SEND_INTERVAL_SEC;
     Timer timer;
+    TimerTask timerTask;
 
     @SuppressLint({"CheckResult", "SetTextI18n"})
     @Override
@@ -85,6 +87,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         btnStopSend = findViewById(R.id.btnStopSend);
         btnStopSend.setEnabled(false);
         etSendInterval = findViewById(R.id.etSendInterval);
+        etSendAddress = findViewById(R.id.etSendAddress);
 
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         sensorAccel = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
@@ -103,35 +106,31 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 .build();
 
         sendIntervalSec = Integer.parseInt(etSendInterval.getText().toString());
-        etSendInterval.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+        etSendInterval.addTextChangedListener(new AfterTextChangedWatcher(s -> {
+            try {
+                sendIntervalSec = Integer.parseInt(s.toString());
+            } catch (NumberFormatException e) {
+                sendIntervalSec = DEFAULT_SEND_INTERVAL_SEC;
             }
-
-            @Override
-            public void onTextChanged(CharSequence s, int start, int before, int count) {
-            }
-
-            @Override
-            public void afterTextChanged(Editable s) {
-                try {
-                    sendIntervalSec = Integer.parseInt(s.toString());
-                } catch (NumberFormatException e) {
-                    sendIntervalSec = DEFAULT_SEND_INTERVAL_SEC;
-                }
-            }
-        });
+        }));
+        etSendAddress.addTextChangedListener(new AfterTextChangedWatcher(
+                s -> requestData.setRequestUrl("http://" + s.toString() + ":3000/trip/send")
+        ));
     }
 
     public void onBtnStartSendClick(View view) {
         btnStartSend.setEnabled(false);
         btnStopSend.setEnabled(true);
         etSendInterval.setEnabled(false);
+        etSendAddress.setEnabled(false);
 
         registerSensorListeners();
         requestLocationUpdates(100, 0);
-        /* 참조사이트: https://arabiannight.tistory.com/67 */
-        TimerTask tt = new TimerTask() {
+
+        /* 참조사이트:
+         * https://arabiannight.tistory.com/67
+         * https://m.blog.naver.com/PostView.nhn?blogId=ssarang8649&logNo=220948756167&proxyReferer=https:%2F%2Fwww.google.com%2F */
+        timerTask = new TimerTask() {
             @Override
             public void run() {
                 if (reqBody != null) {
@@ -150,18 +149,19 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             }
         };
         timer = new Timer();
-        timer.schedule(tt, 0, sendIntervalSec * 1000);
-        Log.d(TAG, "sendIntervalSec: " + sendIntervalSec);
+        timer.schedule(timerTask, 0, sendIntervalSec * 1000);
     }
 
     public void onBtnStopSendClick(View view) {
         btnStartSend.setEnabled(true);
         btnStopSend.setEnabled(false);
         etSendInterval.setEnabled(true);
+        etSendAddress.setEnabled(true);
 
         sensorManager.unregisterListener(this);
         locationManager.removeUpdates(this);
         timer.cancel();
+        timer.purge();
     }
 
     @Override
@@ -296,7 +296,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
         tvSpeed.setText(String.valueOf(speed));
 
         String address = getAddress(latitude, longitude);
-        tvAddress.setText(address);
+        if (address != null)
+            tvAddress.setText(address);
 
         reqBody = new HttpReqBody(latitude, longitude,
                 null, null, null, null, speed);
