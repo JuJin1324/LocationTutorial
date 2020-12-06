@@ -237,7 +237,7 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
             Log.d(TAG, "Passive : " + latitude + '/' + longitude);
         }
         /* 참조사이트: https://copycoding.tistory.com/38 */
-        double speed = location.getSpeed();
+        double speed = location.getSpeed() * 3.6;   /* m/s -> km/h */
         tvSpeed.setText(String.valueOf(speed));
 
         String address = getAddress(latitude, longitude);
