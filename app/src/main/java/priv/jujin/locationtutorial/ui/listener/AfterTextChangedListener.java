@@ -3,10 +3,10 @@ package priv.jujin.locationtutorial.ui.listener;
 import android.text.Editable;
 import android.text.TextWatcher;
 
-public class AfterTextChangedWatcher implements TextWatcher {
+public class AfterTextChangedListener implements TextWatcher {
     AfterTextChangedCallback afterTextChangedCallback;
 
-    public AfterTextChangedWatcher(AfterTextChangedCallback afterTextChangedCallback) {
+    public AfterTextChangedListener(AfterTextChangedCallback afterTextChangedCallback) {
         this.afterTextChangedCallback = afterTextChangedCallback;
     }
 

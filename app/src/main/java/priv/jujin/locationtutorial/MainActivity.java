@@ -38,7 +38,7 @@ import java.util.TimerTask;
 import priv.jujin.locationtutorial.http.HttpReqBody;
 import priv.jujin.locationtutorial.http.NetworkHelper;
 import priv.jujin.locationtutorial.http.RequestData;
-import priv.jujin.locationtutorial.ui.listener.AfterTextChangedWatcher;
+import priv.jujin.locationtutorial.ui.listener.AfterTextChangedListener;
 
 public class MainActivity extends AppCompatActivity implements LocationListener, SensorEventListener {
     private final String TAG = "LocationProvider";
@@ -107,14 +107,14 @@ public class MainActivity extends AppCompatActivity implements LocationListener,
                 .build();
 
         sendIntervalSec = Integer.parseInt(etSendInterval.getText().toString());
-        etSendInterval.addTextChangedListener(new AfterTextChangedWatcher(editText -> {
+        etSendInterval.addTextChangedListener(new AfterTextChangedListener(editText -> {
             try {
                 sendIntervalSec = Integer.parseInt(editText.toString());
             } catch (NumberFormatException e) {
                 sendIntervalSec = DEFAULT_SEND_INTERVAL_SEC;
             }
         }));
-        etSendAddress.addTextChangedListener(new AfterTextChangedWatcher(
+        etSendAddress.addTextChangedListener(new AfterTextChangedListener(
                 editText -> requestData.setRequestUrl("http://" + editText.toString() + ":3000/trip/send")
         ));
     }
